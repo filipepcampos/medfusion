@@ -10,10 +10,11 @@ import torch
 from torch.utils.data import ConcatDataset
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
-from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset
+from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, MIMIC_CXR_Dataset
 from medical_diffusion.models.embedders.latent_embedders import VQVAE, VQGAN, VAE, VAEGAN
 
 import torch.multiprocessing
@@ -46,19 +47,27 @@ if __name__ == "__main__":
     #     path_root='/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/'
     # )
 
-    ds_3 = CheXpert_2_Dataset( #  256x256
-        # image_resize=128, 
+    # ds_3 = CheXpert_2_Dataset( #  256x256
+    #     # image_resize=128, 
+    #     augment_horizontal_flip=False,
+    #     augment_vertical_flip=False,
+    #     # path_root = '/home/gustav/Documents/datasets/CheXpert/preprocessed_tianyu'
+    #     path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+    # )
+
+    ds_4 = MIMIC_CXR_Dataset(
+        image_resize=256,
         augment_horizontal_flip=False,
         augment_vertical_flip=False,
-        # path_root = '/home/gustav/Documents/datasets/CheXpert/preprocessed_tianyu'
-        path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv'
     )
 
     # ds = ConcatDataset([ds_1, ds_2, ds_3])
    
     dm = SimpleDataModule(
-        ds_train = ds_3,
-        batch_size=8, 
+        ds_train = ds_4,
+        batch_size=28, 
         # num_workers=0,
         pin_memory=True
     ) 
@@ -150,6 +159,9 @@ if __name__ == "__main__":
         save_top_k=5,
         mode=min_max,
     )
+
+    logger = WandbLogger(project="medfusion_MIMIC")
+
     trainer = Trainer(
         accelerator='gpu',
         devices=[0],
@@ -162,8 +174,9 @@ if __name__ == "__main__":
         # callbacks=[checkpointing, early_stopping],
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
-        log_every_n_steps=save_and_sample_every, 
-        auto_lr_find=False,
+        log_every_n_steps=save_and_sample_every,
+        logger=logger,
+        # auto_lr_find=False,
         # limit_train_batches=1000,
         limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
         min_epochs=100,

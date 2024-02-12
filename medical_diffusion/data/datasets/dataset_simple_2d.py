@@ -5,6 +5,7 @@ from torch import nn
 from pathlib import Path 
 from torchvision import transforms as T
 import pandas as pd 
+import math
 
 from PIL import Image
 
@@ -181,6 +182,63 @@ class CheXpert_2_Dataset(SimpleDataset2D):
         target = int(self.labels.loc[(path_index, image_index), 'Cardiomegaly'])
         # return {'uid':uid, 'source': self.transform(img), 'target':target}
         return {'source': self.transform(img), 'target':target}
+    
+    @classmethod
+    def run_item_crawler(cls, path_root, extension, **kwargs):
+        """Overwrite to speed up as paths are determined by .csv file anyway"""
+        return []
+    
+    def get_weights(self):
+        n_samples = len(self)
+        weight_per_class = 1/self.labels['Cardiomegaly'].value_counts(normalize=True)
+        # weight_per_class = {2.0: 1.2, 1.0: 8.2, 0.0: 24.3}
+        weights = [0] * n_samples
+        for index in range(n_samples):
+            target = self.labels.loc[self.labels.index[index], 'Cardiomegaly']
+            weights[index] = weight_per_class[target]
+        return weights
+
+
+class MIMIC_CXR_Dataset(SimpleDataset2D):
+    def __init__(self, split_path, split="train", *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        metadata_labels = pd.read_csv(self.path_root/'mimic-cxr-2.0.0-metadata.csv')
+        metadata_labels = metadata_labels.loc[metadata_labels['ViewPosition'] == 'PA']
+
+        chexpert_labels = pd.read_csv(self.path_root/'mimic-cxr-2.0.0-chexpert.csv', index_col=['subject_id', 'study_id'])
+
+        splits = pd.read_csv(split_path)
+
+        labels = metadata_labels.merge(chexpert_labels, on="study_id", how="outer") # TODO: Rethink whether outer is necessary
+        labels = labels.dropna(subset=["subject_id"])
+
+        labels = labels.merge(splits, on="dicom_id", suffixes=('', '_right'))
+        labels = labels[labels["split"] == split]
+
+        labels['Cardiomegaly'] = labels['Cardiomegaly'].map(lambda x: 2 if x < 0 or math.isnan(x) else x)
+        labels = labels.set_index("dicom_id")
+        
+        def get_path(row):
+            dicom_id = str(row.name)
+            subject = 'p' + str(int(row['subject_id'])) # todo: this is a lazy hack instead of properly changing column type
+            study = 's' + str(int(row['study_id']))
+            image_file = dicom_id + '.jpg'
+            return self.path_root/'files'/subject[:3]/subject/study/image_file
+
+        labels['Path'] = labels.apply(get_path, axis=1)
+
+        self.labels = labels
+    
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        dicom_id = self.labels.index[index]
+        row = self.labels.loc[dicom_id]
+
+        img = self.load_item(row['Path'])
+        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly'])}
     
     @classmethod
     def run_item_crawler(cls, path_root, extension, **kwargs):

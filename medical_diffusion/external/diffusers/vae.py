@@ -597,7 +597,7 @@ class VQVAEWrapper(BasicModel):
         x = self.model.decode(z)
         return x
 
-    def _step(self, batch: dict, batch_idx: int, state: str, step: int, optimizer_idx:int):
+    def _step(self, batch: dict, batch_idx: int, state: str, step: int):
         # ------------------------- Get Source/Target ---------------------------
         x = batch['source']
         target = x
@@ -608,6 +608,14 @@ class VQVAEWrapper(BasicModel):
         # ------------------------- Compute Loss ---------------------------
         loss = self.loss_fct(pred, target)
         loss += vq_loss
+
+        # ------------------------- Append Loss ----------------------------
+        if state == "train":
+            self.training_step_outputs.append(loss)
+        elif state == "val":
+            self.validation_step_outputs.append(loss)
+        else:
+            self.test_step_outputs.append(loss)
          
         # --------------------- Compute Metrics  -------------------------------
         results = {'loss':loss}

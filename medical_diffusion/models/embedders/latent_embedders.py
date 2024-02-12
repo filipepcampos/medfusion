@@ -842,15 +842,21 @@ class VAE(BasicModel):
             self.log(f"{state}/{metric_name}", metric_val, batch_size=x.shape[0], on_step=True, on_epoch=True)     
 
         # ----------------- Save Image ------------------------------
+        # if self.global_step != 0 and self.global_step % self.sample_every_n_steps == 0:
+        #     log_step = self.global_step // self.sample_every_n_steps
+        #     path_out = Path(self.logger.log_dir)/'images'
+        #     path_out.mkdir(parents=True, exist_ok=True)
+        #     # for 3D images use depth as batch :[D, C, H, W], never show more than 16+16 =32 images 
+        #     def depth2batch(image):
+        #         return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
+        #     images = torch.cat([depth2batch(img)[:16] for img in (x, pred)]) 
+        #     save_image(images, path_out/f'sample_{log_step}.png', nrow=x.shape[0], normalize=True)
+
+        # Wandb
         if self.global_step != 0 and self.global_step % self.sample_every_n_steps == 0:
-            log_step = self.global_step // self.sample_every_n_steps
-            path_out = Path(self.logger.log_dir)/'images'
-            path_out.mkdir(parents=True, exist_ok=True)
-            # for 3D images use depth as batch :[D, C, H, W], never show more than 16+16 =32 images 
-            def depth2batch(image):
-                return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
-            images = torch.cat([depth2batch(img)[:16] for img in (x, pred)]) 
-            save_image(images, path_out/f'sample_{log_step}.png', nrow=x.shape[0], normalize=True)
+          def depth2batch(image):
+            return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
+          self.logger.log_image(key="samples", images=[depth2batch(img)[:16] for img in (x, pred)])
     
         return loss
 
