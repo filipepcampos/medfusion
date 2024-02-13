@@ -227,6 +227,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
             return self.path_root/'files'/subject[:3]/subject/study/image_file
 
         labels['Path'] = labels.apply(get_path, axis=1)
+        labels = labels[labels['Cardiomegaly']!=2]
 
         self.labels = labels
     
@@ -254,3 +255,21 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
             target = self.labels.loc[self.labels.index[index], 'Cardiomegaly']
             weights[index] = weight_per_class[target]
         return weights
+
+
+class MIMIC_CXR_ImageFolder(data.Dataset):
+    def __init__(self, split_path, split="train", *args, **kwargs):
+        self.ds = MIMIC_CXR_Dataset(split_path, split, *args, **kwargs)
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, index):
+        datum = self.ds[index]
+        return (datum["source"], datum["target"])
+
+    def get_samples(self, size):
+        samples = []
+        for i in range(size):
+            samples.append(self.__getitem__(i))
+        return samples

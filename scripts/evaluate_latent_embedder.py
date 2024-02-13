@@ -14,6 +14,7 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity as LPI
 from torchmetrics.functional import multiscale_structural_similarity_index_measure as mmssim
 
 from medical_diffusion.models.embedders.latent_embedders import VAE
+from medical_diffusion.data.datasets import MIMIC_CXR_ImageFolder
 
 
 # ----------------Settings --------------
@@ -22,7 +23,8 @@ max_samples = None # set to None for all
 target_class = None # None for no specific class 
 # path_out = Path.cwd()/'results'/'MSIvsMSS_2'/'metrics'
 # path_out = Path.cwd()/'results'/'AIROGS'/'metrics'
-path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
+# path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
+path_out = Path.cwd()/'results'/'MIMIC-CXR-JPG'/'metrics'
 path_out.mkdir(parents=True, exist_ok=True)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -37,15 +39,29 @@ logger.addHandler(logging.FileHandler(path_out/f'metrics_{current_time}.log', 'w
 pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(-1, 0) # In contrast to ToTensor(), this will not cast 0-255 to 0-1 and destroy uint8 (required later)
 
 # ---------------- Dataset/Dataloader ----------------
-ds_real = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/', transform=pil2torch)
+# ds_real = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/', transform=pil2torch)
+ds_real = MIMIC_CXR_ImageFolder(
+        image_resize=256,
+        augment_horizontal_flip=False,
+        augment_vertical_flip=False,
+        transform = pil2torch,
+        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv',
+        split = "test"
+    )
 # ds_real = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_256x256_ref/', transform=pil2torch)
 # ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference_test/', transform=pil2torch)
 
 # ---------- Limit Sample Size 
-ds_real.samples = ds_real.samples[slice(max_samples)]
+ds_real.samples = ds_real.get_samples(128)
 
 
 # --------- Select specific class ------------
+# if target_class is not None:
+#     ds_real = Subset(ds_real, [i for i in range(len(ds_real)) if ds_real.samples[i][1] == ds_real.class_to_idx[target_class]])
+# dm_real = DataLoader(ds_real, batch_size=batch_size, num_workers=8, shuffle=False, drop_last=False)
+
+# logger.info(f"Samples Real: {len(ds_real)}")
 if target_class is not None:
     ds_real = Subset(ds_real, [i for i in range(len(ds_real)) if ds_real.samples[i][1] == ds_real.class_to_idx[target_class]])
 dm_real = DataLoader(ds_real, batch_size=batch_size, num_workers=8, shuffle=False, drop_last=False)
@@ -54,7 +70,8 @@ logger.info(f"Samples Real: {len(ds_real)}")
 
 
 # --------------- Load Model ------------------
-model = VAE.load_from_checkpoint('runs/2022_12_12_133315_chest_vaegan/last_vae.ckpt')
+# model = VAE.load_from_checkpoint('runs/2022_12_12_133315_chest_vaegan/last_vae.ckpt')
+model = VAE.load_from_checkpoint('last.ckpt')
 model.to(device)
 
 # from diffusers import StableDiffusionPipeline

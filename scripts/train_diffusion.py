@@ -7,11 +7,12 @@ import torch
 import torch.nn as nn
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 import numpy as np 
 import torchio as tio 
 
 from medical_diffusion.data.datamodules import SimpleDataModule
-from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset
+from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, MIMIC_CXR_Dataset
 from medical_diffusion.models.pipelines import DiffusionPipeline
 from medical_diffusion.models.estimators import UNet
 from medical_diffusion.external.stable_diffusion.unet_openai import UNetModel
@@ -44,15 +45,23 @@ if __name__ == "__main__":
     #     path_root='/mnt/hdd/datasets/pathology/kather_msi_mss_2/train/',
     # )
 
-    ds = CheXpert_2_Dataset( #  256x256
+    # ds = CheXpert_2_Dataset( #  256x256
+    #     augment_horizontal_flip=False,
+    #     augment_vertical_flip=False,
+    #     path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+    # )
+
+    ds = MIMIC_CXR_Dataset(
+        image_resize=256,
         augment_horizontal_flip=False,
         augment_vertical_flip=False,
-        path_root = '/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/preprocessed_tianyu'
+        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv'
     )
   
     dm = SimpleDataModule(
         ds_train = ds,
-        batch_size=32, 
+        batch_size=28, 
         # num_workers=0,
         pin_memory=True,
         # weights=ds.get_weights()
@@ -111,7 +120,7 @@ if __name__ == "__main__":
     # latent_embedder = None 
     # latent_embedder = VQVAE
     latent_embedder = VAE
-    latent_embedder_checkpoint = 'runs/2022_12_12_133315_chest_vaegan/last_vae.ckpt'
+    latent_embedder_checkpoint = 'runs/2024_02_12_104243/last.ckpt'
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(
@@ -138,6 +147,8 @@ if __name__ == "__main__":
     to_monitor = "train/loss"  # "pl/val_loss" 
     min_max = "min"
     save_and_sample_every = 100
+
+    logger = WandbLogger(project="medfusion_diffusion_MIMIC")
 
     early_stopping = EarlyStopping(
         monitor=to_monitor,
@@ -166,8 +177,9 @@ if __name__ == "__main__":
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
         log_every_n_steps=save_and_sample_every, 
-        auto_lr_find=False,
+        # auto_lr_find=False,
         # limit_train_batches=1000,
+        logger=logger,
         limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
         min_epochs=100,
         max_epochs=1001,
@@ -178,6 +190,6 @@ if __name__ == "__main__":
     trainer.fit(pipeline, datamodule=dm)
 
     # ------------- Save path to best model -------------
-    pipeline.save_best_checkpoint(trainer.logger.log_dir, checkpointing.best_model_path)
+    pipeline.save_best_checkpoint('checkpoints', checkpointing.best_model_path) # TODO: This is a slightly lazy solution
 
 
