@@ -2,7 +2,6 @@
 from pathlib import Path
 import torch 
 from torchvision import utils 
-import math 
 from medical_diffusion.models.pipelines import DiffusionPipeline
 import numpy as np 
 from PIL import Image
@@ -15,21 +14,22 @@ def chunks(lst, n):
 
 # ------------ Load Model ------------
 device = torch.device('cuda')
-# pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
-pipeline = DiffusionPipeline.load_from_checkpoint('runs/2022_12_12_171357_chest_diffusion/last.ckpt')
+
+pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
 pipeline.to(device)
 
 if __name__ == "__main__":
     # {'NRG':0, 'RG':1} 3270, {'MSIH':0, 'nonMSIH':1} :9979 {'No_Cardiomegaly':0, 'Cardiomegaly':1} 7869
     for steps in [50, 100, 150, 200, 250]:
         for name, label in  {'No_Cardiomegaly':0, 'Cardiomegaly':1}.items(): 
-            n_samples = 7869
-            sample_batch = 200
+            n_samples = 500
+            sample_batch = 64
             cfg = 1
         
             # path_out = Path(f'/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/diffusion2_{steps}/')/name
-            path_out = Path(f'/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_{steps}')/name
+            # path_out = Path(f'/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_{steps}')/name
             # path_out = Path('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion')/name
+            path_out = Path(f'./dataset/synthetic_{steps}')
             path_out.mkdir(parents=True, exist_ok=True)
 
             # --------- Generate Samples  -------------------

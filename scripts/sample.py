@@ -15,7 +15,7 @@ def normalize(img):
     return torch.stack([(b-b.min())/(b.max()-b.min()) for b in img])
 
 if __name__ == "__main__":
-    path_out = Path.cwd()/'results/CheXpert/samples'
+    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples'
     path_out.mkdir(parents=True, exist_ok=True)
 
     torch.manual_seed(0)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
-    pipeline = DiffusionPipeline.load_from_checkpoint('runs/2022_12_12_171357_chest_diffusion/last.ckpt')
+    pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
     pipeline.to(device)
 
     

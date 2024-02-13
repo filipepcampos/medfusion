@@ -217,13 +217,19 @@ class DiffusionPipeline(BasicModel):
             # self.logger.experiment.add_images("source_img", norm(torch.moveaxis(x_0[0,-1:], 0,-1)), global_step=log_step, dataformats=dataformats) 
             # self.logger.experiment.add_images("sample_img", norm(torch.moveaxis(sample_img[0,-1:], 0,-1)), global_step=log_step, dataformats=dataformats) 
             
-            path_out = Path(self.logger.log_dir)/'images'
-            path_out.mkdir(parents=True, exist_ok=True)
+            # path_out = Path(self.logger.log_dir)/'images'
+            # path_out.mkdir(parents=True, exist_ok=True)
+            # # for 3D images use depth as batch :[D, C, H, W], never show more than 32 images 
+            # def depth2batch(image):
+            #     return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
+            # images = depth2batch(sample_img)[:32]
+            # save_image(images, path_out/f'sample_{log_step}.png', normalize=True)
+
             # for 3D images use depth as batch :[D, C, H, W], never show more than 32 images 
             def depth2batch(image):
                 return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
             images = depth2batch(sample_img)[:32]
-            save_image(images, path_out/f'sample_{log_step}.png', normalize=True)
+            self.logger.log_image(key="samples", images=images)
         
         
         return loss
