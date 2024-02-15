@@ -12,14 +12,16 @@ from torchmetrics.image.fid import FrechetInceptionDistance as FID
 from torchmetrics.image.inception import InceptionScore as IS
 
 from medical_diffusion.metrics.torchmetrics_pr_recall import ImprovedPrecessionRecall
+from medical_diffusion.data.datasets import MIMIC_CXR_ImageFolder
 
 
 # ----------------Settings --------------
-batch_size = 100
+batch_size = 16
 max_samples = None # set to None for all 
 # path_out = Path.cwd()/'results'/'MSIvsMSS_2'/'metrics'
 # path_out = Path.cwd()/'results'/'AIROGS'/'metrics'
-path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
+# path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
+path_out = Path.cwd()/'results'/'MIMIC-CXR-JPG'/'metrics'
 path_out.mkdir(parents=True, exist_ok=True)
 
 
@@ -42,12 +44,23 @@ pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(-1, 0) # In contrast
 # ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_stylegan3/', transform=pil2torch) 
 # ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion', transform=pil2torch) 
 
-ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference/', transform=pil2torch)
+# ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference/', transform=pil2torch)
 # ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_progan/', transform=pil2torch) 
-ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_250/', transform=pil2torch) 
+# ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_250/', transform=pil2torch) 
 
-ds_real.samples = ds_real.samples[slice(max_samples)]
+ds_real = MIMIC_CXR_ImageFolder(
+        image_resize=256,
+        augment_horizontal_flip=False,
+        augment_vertical_flip=False,
+        transform = pil2torch,
+        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv',
+        split = "test"
+    )
+ds_fake = ImageFolder('./dataset/synthetic_50', transform=pil2torch)
+
 ds_fake.samples = ds_fake.samples[slice(max_samples)]
+ds_real.samples = ds_real.get_samples(len(ds_real))
 
 
 # --------- Select specific class ------------

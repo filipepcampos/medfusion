@@ -207,13 +207,12 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
         metadata_labels = metadata_labels.loc[metadata_labels['ViewPosition'] == 'PA']
 
         chexpert_labels = pd.read_csv(self.path_root/'mimic-cxr-2.0.0-chexpert.csv', index_col=['subject_id', 'study_id'])
-
         splits = pd.read_csv(split_path)
-
-        labels = metadata_labels.merge(chexpert_labels, on="study_id", how="outer") # TODO: Rethink whether outer is necessary
+        labels = metadata_labels.merge(chexpert_labels, on="study_id", how="left") # TODO: Rethink whether outer is necessary
         labels = labels.dropna(subset=["subject_id"])
 
-        labels = labels.merge(splits, on="dicom_id", suffixes=('', '_right'))
+        labels = labels.merge(splits, on="dicom_id", suffixes=('', '_right'), how="left")        
+
         labels = labels[labels["split"] == split]
 
         labels['Cardiomegaly'] = labels['Cardiomegaly'].map(lambda x: 2 if x < 0 or math.isnan(x) else x)
@@ -239,7 +238,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
         row = self.labels.loc[dicom_id]
 
         img = self.load_item(row['Path'])
-        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly'])}
+        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly']), 'path': row['Path']}
     
     @classmethod
     def run_item_crawler(cls, path_root, extension, **kwargs):

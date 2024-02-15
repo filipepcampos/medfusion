@@ -56,18 +56,28 @@ if __name__ == "__main__":
     # )
 
     ds_4 = MIMIC_CXR_Dataset(
-        image_resize=256,
+        image_resize=512,
         augment_horizontal_flip=False,
         augment_vertical_flip=False,
         path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
         split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv'
     )
 
+    ds_val = MIMIC_CXR_Dataset(
+        image_resize=512,
+        augment_horizontal_flip=False,
+        augment_vertical_flip=False,
+        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv',
+        split = "validate"
+    )
+
     # ds = ConcatDataset([ds_1, ds_2, ds_3])
    
     dm = SimpleDataModule(
         ds_train = ds_4,
-        batch_size=28, 
+        ds_val = ds_val,
+        batch_size=8, 
         # num_workers=0,
         pin_memory=True
     ) 
@@ -170,16 +180,16 @@ if __name__ == "__main__":
         # amp_level='O2',
         # gradient_clip_val=0.5,
         default_root_dir=str(path_run_dir),
-        callbacks=[checkpointing],
-        # callbacks=[checkpointing, early_stopping],
+        # callbacks=[checkpointing],
+        callbacks=[checkpointing, early_stopping],
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
         log_every_n_steps=save_and_sample_every,
         logger=logger,
         # auto_lr_find=False,
         # limit_train_batches=1000,
-        limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
-        min_epochs=100,
+        # limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
+        min_epochs=1,
         max_epochs=1001,
         num_sanity_val_steps=2,
     )

@@ -29,7 +29,7 @@ if __name__ == "__main__":
             # path_out = Path(f'/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/diffusion2_{steps}/')/name
             # path_out = Path(f'/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_{steps}')/name
             # path_out = Path('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion')/name
-            path_out = Path(f'./dataset/synthetic_{steps}')
+            path_out = Path(f'./dataset/synthetic_{steps}/{name}')
             path_out.mkdir(parents=True, exist_ok=True)
 
             # --------- Generate Samples  -------------------

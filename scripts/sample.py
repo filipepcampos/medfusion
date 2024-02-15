@@ -48,7 +48,12 @@ if __name__ == "__main__":
         # --------- Save result ---------------
         results = (results+1)/2  # Transform from [-1, 1] to [0, 1]
         results = results.clamp(0, 1)
+
         utils.save_image(results, path_out/f'test_{cond}.png', nrow=int(math.sqrt(results.shape[0])), normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
+
+        for i, img in enumerate(results):
+            utils.save_image(img.unsqueeze(0), path_out/f'test_{cond}_{i}.png', nrow=1, normalize=True, scale_each=True)
+
         images[cond] = results
 
 
