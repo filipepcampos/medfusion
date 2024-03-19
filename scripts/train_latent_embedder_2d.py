@@ -16,6 +16,7 @@ from pytorch_lightning.loggers import WandbLogger
 from medical_diffusion.data.datamodules import SimpleDataModule
 from medical_diffusion.data.datasets import AIROGSDataset, MSIvsMSS_2_Dataset, CheXpert_2_Dataset, MIMIC_CXR_Dataset
 from medical_diffusion.models.embedders.latent_embedders import VQVAE, VQGAN, VAE, VAEGAN
+from medical_diffusion.loss.privacy_loss import PrivacyLoss
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     # )
 
     ds_4 = MIMIC_CXR_Dataset(
-        image_resize=512,
+        image_resize=256,
         augment_horizontal_flip=False,
         augment_vertical_flip=False,
         path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     )
 
     ds_val = MIMIC_CXR_Dataset(
-        image_resize=512,
+        image_resize=256,
         augment_horizontal_flip=False,
         augment_vertical_flip=False,
         path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     dm = SimpleDataModule(
         ds_train = ds_4,
         ds_val = ds_val,
-        batch_size=8, 
+        batch_size=16, 
         # num_workers=0,
         pin_memory=True
     ) 
@@ -94,7 +95,7 @@ if __name__ == "__main__":
         strides =    [ 1,  2,   2,    2],
         deep_supervision=1,
         use_attention= 'none',
-        loss = torch.nn.MSELoss,
+        loss = PrivacyLoss,
         # optimizer_kwargs={'lr':1e-6},
         embedding_loss_weight=1e-6
     )
