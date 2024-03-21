@@ -26,7 +26,10 @@ class PrivacyLoss(nn.Module):
         # Get minimum distance for each embedding
         min_distances = torch.min(distances, dim=1).values.to(x.device)
 
+        # Get min between tensor and 0
+        zeros = torch.zeros(min_distances.shape).to(x.device)
+
         # Calculate loss
-        loss = self.mse(x, y) + min_distances * 10 # TODO: Weight
+        loss = self.mse(x, y) + torch.minimum(50 - min_distances, zeros) * 5 # TODO: Weight
 
         return loss
