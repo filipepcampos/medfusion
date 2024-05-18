@@ -853,11 +853,22 @@ class VAE(BasicModel):
         #     save_image(images, path_out/f'sample_{log_step}.png', nrow=x.shape[0], normalize=True)
 
         # Wandb
-        if self.global_step != 0 and self.global_step % self.sample_every_n_steps == 0:
+        # if self.global_step != 0 and self.global_step % self.sample_every_n_steps == 0:
+        if self.global_step != 0 and self.global_step % 300 == 0:
+          # TODO: Changed this image
           def depth2batch(image):
             return (image if image.ndim<5 else torch.swapaxes(image[0], 0, 1))
           self.logger.log_image(key="samples", images=[depth2batch(img)[:16] for img in (x, pred)])
-    
+          # save images locally as well
+          log_step = self.global_step // self.sample_every_n_steps
+          path_out = "./debug_images"
+          # Create directory if it doesn't exist
+          Path(path_out).mkdir(parents=True, exist_ok=True)
+          images = torch.cat([depth2batch(img)[:16] for img in (x, pred)])
+          import datetime
+          datetimesec = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+          save_image(images, path_out + f'/sample_{datetimesec}_{log_step}.png', nrow=x.shape[0], normalize=True)
+
         return loss
 
 

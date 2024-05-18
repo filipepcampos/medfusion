@@ -1,10 +1,6 @@
-
-
-
-
-
 from pathlib import Path
 from datetime import datetime
+import argparse
 
 import torch 
 from torch.utils.data import ConcatDataset
@@ -73,16 +69,22 @@ if __name__ == "__main__":
         split = "validate"
     )
 
-    # ds = ConcatDataset([ds_1, ds_2, ds_3])
+    # ds = ConcatDataset([ds_1, ds_2, ds_3])GDPR
    
     dm = SimpleDataModule(
         ds_train = ds_4,
         ds_val = ds_val,
-        batch_size=16, 
+        batch_size=4,
         # num_workers=0,
         pin_memory=True
-    ) 
-    
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--margin', type=float, default=10)
+    parser.add_argument('--weight', type=float, default=5)
+    args = parser.parse_args()
+    margin = args.margin
+    weight = args.weight
 
     # ------------ Initialize Model ------------
     model = VAE(
@@ -96,6 +98,7 @@ if __name__ == "__main__":
         deep_supervision=1,
         use_attention= 'none',
         loss = PrivacyLoss,
+        loss_kwargs={'margin': margin, 'weight': weight, 'reduction': "none"},
         # optimizer_kwargs={'lr':1e-6},
         embedding_loss_weight=1e-6
     )
@@ -154,7 +157,7 @@ if __name__ == "__main__":
     # -------------- Training Initialization ---------------
     to_monitor = "train/L1"  # "val/loss" 
     min_max = "min"
-    save_and_sample_every = 50
+    save_and_sample_every = 5
 
     early_stopping = EarlyStopping(
         monitor=to_monitor,
@@ -167,7 +170,7 @@ if __name__ == "__main__":
         monitor=to_monitor,
         every_n_train_steps=save_and_sample_every,
         save_last=True,
-        save_top_k=5,
+        save_top_k=1,
         mode=min_max,
     )
 
@@ -182,7 +185,8 @@ if __name__ == "__main__":
         # gradient_clip_val=0.5,
         default_root_dir=str(path_run_dir),
         # callbacks=[checkpointing],
-        callbacks=[checkpointing, early_stopping],
+        #callbacks=[checkpointing, early_stopping],
+        callbacks=[checkpointing],
         enable_checkpointing=True,
         check_val_every_n_epoch=1,
         log_every_n_steps=save_and_sample_every,
@@ -191,7 +195,8 @@ if __name__ == "__main__":
         # limit_train_batches=1000,
         # limit_val_batches=0, # 0 = disable validation - Note: Early Stopping no longer available 
         min_epochs=1,
-        max_epochs=1001,
+        max_epochs=4,
+        #max_epochs=1001,
         num_sanity_val_steps=2,
     )
     
@@ -199,6 +204,7 @@ if __name__ == "__main__":
     trainer.fit(model, datamodule=dm)
 
     # ------------- Save path to best model -------------
-    model.save_best_checkpoint(trainer.logger.log_dir, checkpointing.best_model_path)
+    # model.save_best_checkpoint(trainer.logger.log_dir, checkpointing.best_model_path)
+    # model.save_best_checkpoint('checkpoints', checkpointing.best_model_path) # TODO: This is a slightly lazy solution
 
 
