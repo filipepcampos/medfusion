@@ -238,7 +238,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
         row = self.labels.loc[dicom_id]
 
         img = self.load_item(row['Path'])
-        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly']), 'path': row['Path']}
+        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly']), 'path': str(row['Path'])}
     
     @classmethod
     def run_item_crawler(cls, path_root, extension, **kwargs):

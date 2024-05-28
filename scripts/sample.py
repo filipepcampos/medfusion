@@ -15,7 +15,7 @@ def normalize(img):
     return torch.stack([(b-b.min())/(b.max()-b.min()) for b in img])
 
 if __name__ == "__main__":
-    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples'
+    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples_2'
     path_out.mkdir(parents=True, exist_ok=True)
 
     torch.manual_seed(0)

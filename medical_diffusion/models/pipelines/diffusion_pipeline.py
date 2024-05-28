@@ -11,9 +11,7 @@ import streamlit as st
 from medical_diffusion.models import BasicModel
 from medical_diffusion.utils.train_utils import EMAModel
 from medical_diffusion.utils.math_utils import kl_gaussians
-
-
-
+from medical_diffusion.external.retrieval_model import get_retrieval_model
 
 
 
@@ -73,12 +71,15 @@ class DiffusionPipeline(BasicModel):
         if use_ema:
             self.ema_model = EMAModel(self.noise_estimator, **ema_kwargs)
 
+        self.retrieval_model = get_retrieval_model("/nas-ctm01/homes/fpcampos/dev/reidentification/anonymize/models/retrieval_model.pth") # TODO: Remove hard-coded path
 
 
     def _step(self, batch: dict, batch_idx: int, state: str, step: int, optimizer_idx:int):
         results = {}
         x_0 = batch['source']
-        condition = batch.get('target', None) 
+        condition = batch.get('target', None)
+
+        identity_embeddings = self.retrieval_model(x_0)
 
         # Embed into latent space or normalize 
         if self.latent_embedder is not None:
@@ -123,7 +124,7 @@ class DiffusionPipeline(BasicModel):
             condition = None 
        
         # Run Denoise 
-        pred, pred_vertical = noise_estimator(x_t, t, condition, self_cond) 
+        pred, pred_vertical = noise_estimator(x_t, t, condition, self_cond, identity_condition=identity_embeddings) 
         
         # Separate variance (scale) if it was learned 
         if self.estimate_variance:
@@ -244,7 +245,7 @@ class DiffusionPipeline(BasicModel):
 
         # Concatenate inputs for guided and unguided diffusion as proposed by classifier-free-guidance
         if (condition is not None) and (guidance_scale != 1.0):
-            # Model prediction 
+            # Model prediction
             pred_uncond, _ = noise_estimator(x_t, t, condition=un_cond, self_cond=self_cond)
             pred_cond, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond)
             pred = pred_uncond + guidance_scale * (pred_cond - pred_uncond)

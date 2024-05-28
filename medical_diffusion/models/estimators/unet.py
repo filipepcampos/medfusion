@@ -131,7 +131,7 @@ class UNet(nn.Module):
         ])
  
 
-    def forward(self, x_t, t=None, condition=None, self_cond=None):
+    def forward(self, x_t, t=None, condition=None, self_cond=None, identity_condition=None):
         # x_t [B, C, *]
         # t [B,]
         # condition [B,]
@@ -149,9 +149,14 @@ class UNet(nn.Module):
             cond_emb = None  
         else:
             cond_emb = self.cond_embedder(condition) # [B, C]
+
+        # -------- Identity Condition Embedding -----------
+        if identity_condition is not None:
+            # Expand identity_condition to match the shape of cond_emb TODO: Check this
+            identity_condition = identity_condition.unsqueeze(-1).expand(cond_emb.shape)
         
         # ----------- Embedding Summation -------- 
-        emb = save_add(time_emb, cond_emb)
+        emb = save_add(time_emb, cond_emb, identity_condition)
        
         # ---------- Self-conditioning-----------
         if self.use_self_conditioning:

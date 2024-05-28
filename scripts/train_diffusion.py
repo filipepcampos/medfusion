@@ -61,7 +61,7 @@ if __name__ == "__main__":
   
     dm = SimpleDataModule(
         ds_train = ds,
-        batch_size=28, 
+        batch_size=14, 
         # num_workers=0,
         pin_memory=True,
         # weights=ds.get_weights()
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # latent_embedder = None 
     # latent_embedder = VQVAE
     latent_embedder = VAE
-    latent_embedder_checkpoint = 'runs/2024_02_12_104243/last.ckpt'
+    latent_embedder_checkpoint = 'runs/2024_05_28_120619/last.ckpt'
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     min_max = "min"
     save_and_sample_every = 100
 
-    logger = WandbLogger(project="medfusion_diffusion_MIMIC")
+    logger = WandbLogger(project="debug_medfusion")
 
     early_stopping = EarlyStopping(
         monitor=to_monitor,
