@@ -237,7 +237,7 @@ class DiffusionPipeline(BasicModel):
         return loss
 
     
-    def forward(self, x_t, t, condition=None, self_cond=None, guidance_scale=1.0, cold_diffusion=False, un_cond=None):
+    def forward(self, x_t, t, condition=None, self_cond=None, guidance_scale=1.0, cold_diffusion=False, un_cond=None, identity_embedding=None, identity_guidance_scale=-1.0, **kwargs):
         # Note: x_t expected to be in range ~ [-1, 1]
         if self.use_ema:
             noise_estimator = self.ema_model.averaged_model
@@ -249,7 +249,8 @@ class DiffusionPipeline(BasicModel):
             # Model prediction
             pred_uncond, _ = noise_estimator(x_t, t, condition=un_cond, self_cond=self_cond)
             pred_cond, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond)
-            pred = pred_uncond + guidance_scale * (pred_cond - pred_uncond)
+            pred_identity, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond, identity_condition=identity_embedding)
+            pred = pred_uncond + guidance_scale * (pred_cond - pred_uncond) + identity_guidance_scale * (pred_identity - pred_uncond)
 
             if self.estimate_variance:
                 pred_uncond, pred_var_uncond =  pred_uncond.chunk(2, dim = 1)  
@@ -284,7 +285,7 @@ class DiffusionPipeline(BasicModel):
 
 
     @torch.no_grad()
-    def denoise(self, x_t, steps=None, condition=None, use_ddim=True, **kwargs):
+    def denoise(self, x_t, steps=None, condition=None, use_ddim=True, identity_embedding=None, **kwargs):
         self_cond = None 
 
         # ---------- run denoise loop ---------------
@@ -299,7 +300,7 @@ class DiffusionPipeline(BasicModel):
             st_prog_bar.progress((i+1)/len(timesteps_array))
 
             # UNet prediction 
-            x_t, x_0, x_T, self_cond = self(x_t, t.expand(x_t.shape[0]), condition, self_cond=self_cond, **kwargs)
+            x_t, x_0, x_T, self_cond = self(x_t, t.expand(x_t.shape[0]), condition, self_cond=self_cond, identity_embedding=identity_embedding, **kwargs)
             self_cond = self_cond if self.use_self_conditioning else None  
         
             if use_ddim and (steps-i-1>0):

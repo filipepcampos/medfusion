@@ -153,7 +153,7 @@ class UNet(nn.Module):
         # -------- Identity Condition Embedding -----------
         if identity_condition is not None:
             # Expand identity_condition to match the shape of cond_emb TODO: Check this
-            identity_condition = identity_condition.unsqueeze(-1).expand(cond_emb.shape)
+            identity_condition = identity_condition.repeat(1, 8)
         
         # ----------- Embedding Summation -------- 
         emb = save_add(time_emb, cond_emb, identity_condition)

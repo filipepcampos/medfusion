@@ -23,7 +23,8 @@ if __name__ == "__main__":
 
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
-    pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
+    #pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
+    pipeline = DiffusionPipeline.load_from_checkpoint('last_identity_diffusion.ckpt')
     pipeline.to(device)
 
     

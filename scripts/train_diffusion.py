@@ -120,7 +120,8 @@ if __name__ == "__main__":
     # latent_embedder = None 
     # latent_embedder = VQVAE
     latent_embedder = VAE
-    latent_embedder_checkpoint = 'runs/2024_05_28_120619/last.ckpt'
+    #latent_embedder_checkpoint = 'runs/2024_05_28_120619/last.ckpt'
+    latent_embedder_checkpoint = "last.ckpt"
    
     # ------------ Initialize Pipeline ------------
     pipeline = DiffusionPipeline(
