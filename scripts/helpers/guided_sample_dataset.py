@@ -5,6 +5,7 @@ from torchvision import utils
 from medical_diffusion.models.pipelines.diffusion_pipeline_debug import DiffusionPipeline
 from medical_diffusion.data.datasets import MIMIC_CXR_Dataset
 from medical_diffusion.data.datamodules import SimpleDataModule
+from medical_diffusion.external.retrieval_model import get_retrieval_model
 import numpy as np 
 from PIL import Image
 import time
@@ -33,12 +34,18 @@ dm = SimpleDataModule(
     # weights=ds.get_weights()
 ) 
 
-pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
+retrieval_model = get_retrieval_model("/nas-ctm01/homes/fpcampos/dev/reidentification/anonymize/models/retrieval_model.pth") # TODO: Remove hard-coded path
+retrieval_model.to(device)
+
+pipeline = DiffusionPipeline.load_from_checkpoint('last_identity_diffusion2.ckpt')
 pipeline.to(device)
 
 if __name__ == "__main__":
     # {'NRG':0, 'RG':1} 3270, {'MSIH':0, 'nonMSIH':1} :9979 {'No_Cardiomegaly':0, 'Cardiomegaly':1} 7869
     for steps in [250]:
+        loader = dm.train_dataloader()
+        real_iterator = iter(loader)
+
         for name, label in  {'No_Cardiomegaly':0, 'Cardiomegaly':1}.items(): 
             n_samples = 500
             sample_batch = 16
@@ -55,9 +62,12 @@ if __name__ == "__main__":
             counter = 0
 
             for data, chunk in zip(dm.train_dataloader(), chunks(list(range(n_samples)), sample_batch)):
+                real_images = next(real_iterator)['source']
+                real_identities = retrieval_model(real_images.to(device)).detach()
+
                 condition = torch.tensor([label]*len(chunk), device=device) if label is not None else None 
                 un_cond = torch.tensor([1-label]*len(chunk), device=device)  if label is not None else None # Might be None, or 1-condition or specific label 
-                results = pipeline.sample(len(chunk), (8, 32, 32), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps)
+                results = pipeline.sample(len(chunk), (8, 32, 32), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps, identity_embedding=real_identities, identity_guidance_scale=-4)
                 # results = pipeline.sample(len(chunk), (4, 64, 64), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps )
 
                 results = results.cpu().numpy()

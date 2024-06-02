@@ -237,10 +237,13 @@ class UNet(nn.Module):
             cond_emb = None  
         else:
             cond_emb = self.cond_embedder(condition) # [B, C]
+            padding = torch.zeros((time_emb.size(0), time_emb.size(1)-cond_emb.size(1)), device=cond_emb.device)
+            cond_emb = torch.cat([cond_emb, padding], dim=1) # [B, C]
 
         # -------- Identity Condition Embedding -----------
         if identity_condition is not None:
-            identity_condition = identity_condition.repeat(1, 8) # TODO: Double-check
+            padding = torch.zeros((time_emb.size(0), time_emb.size(1)-identity_condition.size(1)), device=identity_condition.device)
+            identity_condition = torch.cat([padding, identity_condition], dim=1) # [B, C]
 
         emb = save_add(time_emb, cond_emb, identity_condition)
        

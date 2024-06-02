@@ -21,7 +21,7 @@ def normalize(img):
 
 
 if __name__ == "__main__":
-    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples_5'
+    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples_7'
     path_out.mkdir(parents=True, exist_ok=True)
 
     torch.manual_seed(0)
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     
     
     # --------- Generate Samples  -------------------
-    steps = 150
+    steps = 250
     use_ddim = True 
     images = {}
     n_samples = 16
@@ -62,43 +62,63 @@ if __name__ == "__main__":
     k = next(iter(dm.train_dataloader()))
     x, y = k["source"].to(device), k["target"]
 
-    guidance_scales = [-16, -8, 0, 8, 16]
+    guidance_scales = [-4, -2, -1, 0, 1, 2, 4]
 
     # Save original images
     utils.save_image(x, path_out/f'original.png', nrow=1, normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
 
-    for cond in [0,1]:
-        save_dict = {}
-        for w in guidance_scales:
-            torch.manual_seed(0)
+    # for cond in [0,1]:
+    #     save_dict = {}
+    #     for w in guidance_scales:
+    #         torch.manual_seed(42)
     
-            # --------- Conditioning ---------
-            condition = torch.tensor([cond]*n_samples, device=device) if cond is not None else None 
-            # un_cond = torch.tensor([1-cond]*n_samples, device=device)
-            un_cond = None 
+    #         # --------- Conditioning ---------
+    #         condition = torch.tensor([cond]*n_samples, device=device) if cond is not None else None 
+    #         # un_cond = torch.tensor([1-cond]*n_samples, device=device)
+    #         un_cond = None 
 
-            x_identity = retrieval_model(x).cuda()
+    #         x_identity = retrieval_model(x).cuda()
 
-            # ----------- Run --------
-            results = pipeline.sample(n_samples, (8, 32, 32), guidance_scale=8, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim, identity_embedding=x_identity, identity_guidance_scale=w)
-            # results = pipeline.sample(n_samples, (4, 64, 64), guidance_scale=1, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim )
+    #         # ----------- Run --------
+    #         results = pipeline.sample(n_samples, (8, 32, 32), guidance_scale=8, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim, identity_embedding=x_identity, identity_guidance_scale=w)
+    #         # results = pipeline.sample(n_samples, (4, 64, 64), guidance_scale=1, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim )
 
-            # --------- Save result ---------------
-            results = (results+1)/2  # Transform from [-1, 1] to [0, 1]
-            results = results.clamp(0, 1)
+    #         # --------- Save result ---------------
+    #         results = (results+1)/2  # Transform from [-1, 1] to [0, 1]
+    #         results = results.clamp(0, 1)
 
-            save_dict[w] = results
+    #         save_dict[w] = results
 
-            #utils.save_image(results, path_out/f'test_{cond}_{w}.png', nrow=int(math.sqrt(results.shape[0])), normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
+    #         #utils.save_image(results, path_out/f'test_{cond}_{w}.png', nrow=int(math.sqrt(results.shape[0])), normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
 
-            images[cond] = results
-        # show images from different w side by side
-        utils.save_image(torch.cat([save_dict[w] for w in guidance_scales], dim=0), path_out/f'test_{cond}.png', nrow=len(guidance_scales), normalize=True, scale_each=True)
+    #         images[cond] = results
+    #     # show images from different w side by side
+    #     utils.save_image(torch.cat([save_dict[w] for w in guidance_scales], dim=0), path_out/f'test_{cond}.png', nrow=len(guidance_scales), normalize=True, scale_each=True)
 
 
-    diff = torch.abs(normalize(rgb2gray(images[1]))-normalize(rgb2gray(images[0]))) # [0,1] -> [0, 1]
-    # diff = torch.abs(images[1]-images[0])
-    utils.save_image(diff, path_out/'diff.png', nrow=int(math.sqrt(results.shape[0])), normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
+    # diff = torch.abs(normalize(rgb2gray(images[1]))-normalize(rgb2gray(images[0]))) # [0,1] -> [0, 1]
+    # # diff = torch.abs(images[1]-images[0])
+    # utils.save_image(diff, path_out/'diff.png', nrow=int(math.sqrt(results.shape[0])), normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
     
+  
+    save_dict = {}
+    for w in guidance_scales:
+        torch.manual_seed(42)
 
-        
+        # --------- Conditioning ---------
+        condition = y.to(device)
+        un_cond = None 
+
+        x_identity = retrieval_model(x).cuda()
+
+        # ----------- Run --------
+        results = pipeline.sample(n_samples, (8, 32, 32), guidance_scale=8, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim, identity_embedding=x_identity, identity_guidance_scale=w)
+
+        # --------- Save result ---------------
+        results = (results+1)/2  # Transform from [-1, 1] to [0, 1]
+        results = results.clamp(0, 1)
+
+        save_dict[w] = results
+
+    # show images from different w side by side
+    utils.save_image(torch.cat([save_dict[w] for w in guidance_scales], dim=0), path_out/f'test.png', nrow=len(guidance_scales), normalize=True, scale_each=True)

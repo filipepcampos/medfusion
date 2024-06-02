@@ -85,7 +85,8 @@ if __name__ == "__main__":
 
     time_embedder = TimeEmbbeding
     time_embedder_kwargs ={
-        'emb_dim': 1024 # stable diffusion uses 4*model_channels (model_channels is about 256)
+        'emb_dim': 1024 + 128 # stable diffusion uses 4*model_channels (model_channels is about 256)
+        # 'emb_dim': label_embedding size + identity_embedding size
     }
 
 

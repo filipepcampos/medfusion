@@ -249,7 +249,7 @@ class DiffusionPipeline(BasicModel):
             # Model prediction
             pred_uncond, _ = noise_estimator(x_t, t, condition=un_cond, self_cond=self_cond)
             pred_cond, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond)
-            pred_identity, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond, identity_condition=identity_embedding)
+            pred_identity, _ = noise_estimator(x_t, t, condition=None, self_cond=self_cond, identity_condition=identity_embedding)
             pred = pred_uncond + guidance_scale * (pred_cond - pred_uncond) + identity_guidance_scale * (pred_identity - pred_uncond)
 
             if self.estimate_variance:
