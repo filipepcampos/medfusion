@@ -12,7 +12,8 @@ from medical_diffusion.models import BasicModel
 from medical_diffusion.utils.train_utils import EMAModel
 from medical_diffusion.utils.math_utils import kl_gaussians
 from medical_diffusion.external.retrieval_model import get_retrieval_model
-
+from medical_diffusion.data.datasets import MIMIC_CXR_Dataset
+from medical_diffusion.data.datamodules import SimpleDataModule
 
 
 class DiffusionPipeline(BasicModel):
@@ -72,6 +73,15 @@ class DiffusionPipeline(BasicModel):
             self.ema_model = EMAModel(self.noise_estimator, **ema_kwargs)
 
         self.retrieval_model = get_retrieval_model("/nas-ctm01/homes/fpcampos/dev/reidentification/anonymize/models/retrieval_model.pth") # TODO: Remove hard-coded path
+        self.retrieval_model.to("cuda")
+
+        self.ds = MIMIC_CXR_Dataset(
+            image_resize=256,
+            augment_horizontal_flip=False,
+            augment_vertical_flip=False,
+            path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
+            split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv'
+        )
 
 
     def _step(self, batch: dict, batch_idx: int, state: str, step: int, optimizer_idx:int):
@@ -298,6 +308,11 @@ class DiffusionPipeline(BasicModel):
         st_prog_bar = st.progress(0)
         for i, t in tqdm(enumerate(reversed(timesteps_array))):
             st_prog_bar.progress((i+1)/len(timesteps_array))
+
+            # Get random batch from self.ds
+            random_indices = torch.randint(0, len(self.ds), (x_t.shape[0],))
+            real_images = torch.stack([self.ds[i.item()]["source"] for i in random_indices]).to("cuda") # TODO: This is annoying
+            identity_embedding = self.retrieval_model(real_images)
 
             # UNet prediction 
             x_t, x_0, x_T, self_cond = self(x_t, t.expand(x_t.shape[0]), condition, self_cond=self_cond, identity_embedding=identity_embedding, **kwargs)

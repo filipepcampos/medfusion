@@ -54,7 +54,7 @@ if __name__ == "__main__":
             # path_out = Path(f'/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/diffusion2_{steps}/')/name
             # path_out = Path(f'/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_{steps}')/name
             # path_out = Path('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion')/name
-            path_out = Path(f'./dataset/synthetic_guided_{steps}/{name}')
+            path_out = Path(f'./dataset/synthetic_guided_{steps}_random/{name}')
             path_out.mkdir(parents=True, exist_ok=True)
 
             # --------- Generate Samples  -------------------
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
                 condition = torch.tensor([label]*len(chunk), device=device) if label is not None else None 
                 un_cond = torch.tensor([1-label]*len(chunk), device=device)  if label is not None else None # Might be None, or 1-condition or specific label 
-                results = pipeline.sample(len(chunk), (8, 32, 32), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps, identity_embedding=real_identities, identity_guidance_scale=-4)
+                results = pipeline.sample(len(chunk), (8, 32, 32), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps, identity_embedding=real_identities, identity_guidance_scale=-32)
                 # results = pipeline.sample(len(chunk), (4, 64, 64), guidance_scale=cfg, condition=condition, un_cond=un_cond, steps=steps )
 
                 results = results.cpu().numpy()
