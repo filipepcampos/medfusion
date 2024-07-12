@@ -1,10 +1,5 @@
-
-import os
-import math
 import torch
-import torch.nn as nn
-import numpy as np
-from einops import repeat
+
 
 def checkpoint(func, inputs, params, flag):
     """
@@ -53,4 +48,3 @@ class CheckpointFunction(torch.autograd.Function):
         del ctx.input_params
         del output_tensors
         return (None, None) + input_grads
-

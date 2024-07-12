@@ -1,15 +1,13 @@
-from pathlib import Path 
+from pathlib import Path
 import logging
 from datetime import datetime
 from tqdm import tqdm
 
-import numpy as np 
+import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import ImageFolder
-from torch.utils.data import TensorDataset, Subset
 from torchmetrics.image.fid import FrechetInceptionDistance as FID
-from torchmetrics.image.inception import InceptionScore as IS
 
 from medical_diffusion.metrics.torchmetrics_pr_recall import ImprovedPrecessionRecall
 from medical_diffusion.data.datasets import MIMIC_CXR_ImageFolder
@@ -17,11 +15,11 @@ from medical_diffusion.data.datasets import MIMIC_CXR_ImageFolder
 
 # ----------------Settings --------------
 batch_size = 16
-max_samples = None # set to None for all 
+max_samples = None  # set to None for all
 # path_out = Path.cwd()/'results'/'MSIvsMSS_2'/'metrics'
 # path_out = Path.cwd()/'results'/'AIROGS'/'metrics'
 # path_out = Path.cwd()/'results'/'CheXpert'/'metrics'
-path_out = Path.cwd()/'results'/'MIMIC-CXR-JPG'/'metrics'
+path_out = Path.cwd() / "results" / "MIMIC-CXR-JPG" / "metrics"
 path_out.mkdir(parents=True, exist_ok=True)
 
 
@@ -29,35 +27,38 @@ path_out.mkdir(parents=True, exist_ok=True)
 current_time = datetime.now().strftime("%Y_%m_%d_%H%M%S")
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
-logger.addHandler(logging.FileHandler(path_out/f'metrics_{current_time}.log', 'w'))
+logger.addHandler(logging.FileHandler(path_out / f"metrics_{current_time}.log", "w"))
 
 # -------------- Helpers ---------------------
-pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(-1, 0) # In contrast to ToTensor(), this will not cast 0-255 to 0-1 and destroy uint8 (required later)
+pil2torch = lambda x: torch.as_tensor(np.array(x)).moveaxis(
+    -1,
+    0,
+)  # In contrast to ToTensor(), this will not cast 0-255 to 0-1 and destroy uint8 (required later)
 
 
 # ---------------- Dataset/Dataloader ----------------
 # ds_real = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/train', transform=pil2torch)
-# ds_fake = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/SYNTH-CRC-10K/', transform=pil2torch) 
-# ds_fake = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/diffusion2_250', transform=pil2torch) 
+# ds_fake = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/SYNTH-CRC-10K/', transform=pil2torch)
+# ds_fake = ImageFolder('/mnt/hdd/datasets/pathology/kather_msi_mss_2/synthetic_data/diffusion2_250', transform=pil2torch)
 
 # ds_real = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_256x256_ref/', transform=pil2torch)
-# ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_stylegan3/', transform=pil2torch) 
-# ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion', transform=pil2torch) 
+# ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_stylegan3/', transform=pil2torch)
+# ds_fake = ImageFolder('/mnt/hdd/datasets/eye/AIROGS/data_generated_diffusion', transform=pil2torch)
 
 # ds_real = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/reference/', transform=pil2torch)
-# ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_progan/', transform=pil2torch) 
-# ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_250/', transform=pil2torch) 
+# ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_progan/', transform=pil2torch)
+# ds_fake = ImageFolder('/mnt/hdd/datasets/chest/CheXpert/ChecXpert-v10/generated_diffusion3_250/', transform=pil2torch)
 
 ds_real = MIMIC_CXR_ImageFolder(
-        image_resize=256,
-        augment_horizontal_flip=False,
-        augment_vertical_flip=False,
-        transform = pil2torch,
-        path_root = '/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR',
-        split_path = '/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv',
-        split = "test"
-    )
-ds_fake = ImageFolder('./dataset/synthetic_50', transform=pil2torch)
+    image_resize=256,
+    augment_horizontal_flip=False,
+    augment_vertical_flip=False,
+    transform=pil2torch,
+    path_root="/nas-ctm01/datasets/public/MEDICAL/MIMIC-CXR",
+    split_path="/nas-ctm01/homes/fpcampos/dev/diffusion/medfusion/data/mimic-cxr-2.0.0-split.csv",
+    split="test",
+)
+ds_fake = ImageFolder("./dataset/synthetic_50", transform=pil2torch)
 
 ds_fake.samples = ds_fake.samples[slice(max_samples)]
 ds_real.samples = ds_real.get_samples(len(ds_real))
@@ -68,24 +69,34 @@ ds_real.samples = ds_real.get_samples(len(ds_real))
 # ds_real = Subset(ds_real, [i for i in range(len(ds_real)) if ds_real.samples[i][1] == ds_real.class_to_idx[target_class]])
 # ds_fake = Subset(ds_fake, [i for i in range(len(ds_fake)) if ds_fake.samples[i][1] == ds_fake.class_to_idx[target_class]])
 
-# Only for testing metrics against OpenAI implementation 
+# Only for testing metrics against OpenAI implementation
 # ds_real = TensorDataset(torch.from_numpy(np.load('/home/gustav/Documents/code/guided-diffusion/data/VIRTUAL_imagenet64_labeled.npz')['arr_0']).swapaxes(1,-1))
 # ds_fake = TensorDataset(torch.from_numpy(np.load('/home/gustav/Documents/code/guided-diffusion/data/biggan_deep_imagenet64.npz')['arr_0']).swapaxes(1,-1))
 
 
-dm_real = DataLoader(ds_real, batch_size=batch_size, num_workers=8, shuffle=False, drop_last=False)
-dm_fake = DataLoader(ds_fake, batch_size=batch_size, num_workers=8, shuffle=False, drop_last=False)
+dm_real = DataLoader(
+    ds_real,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=False,
+    drop_last=False,
+)
+dm_fake = DataLoader(
+    ds_fake,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=False,
+    drop_last=False,
+)
 
 logger.info(f"Samples Real: {len(ds_real)}")
 logger.info(f"Samples Fake: {len(ds_fake)}")
 
 # ------------- Init Metrics ----------------------
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-calc_fid = FID().to(device) # requires uint8
-# calc_is = IS(splits=1).to(device) # requires uint8, features must be 1008 see https://github.com/openai/guided-diffusion/blob/22e0df8183507e13a7813f8d38d51b072ca1e67c/evaluations/evaluator.py#L603 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+calc_fid = FID().to(device)  # requires uint8
+# calc_is = IS(splits=1).to(device) # requires uint8, features must be 1008 see https://github.com/openai/guided-diffusion/blob/22e0df8183507e13a7813f8d38d51b072ca1e67c/evaluations/evaluator.py#L603
 calc_pr = ImprovedPrecessionRecall(splits_real=1, splits_fake=1).to(device)
-
-
 
 
 # --------------- Start Calculation -----------------
@@ -129,14 +140,12 @@ for fake_batch in tqdm(dm_fake):
 # calc_pr.fake_features = fake_ipr.chunk(batch_size)
 
 
-
 # -------------- Summary -------------------
 fid = calc_fid.compute()
 logger.info(f"FID Score: {fid}")
 
 # is_mean, is_std = calc_is.compute()
-# logger.info(f"IS Score: mean {is_mean} std {is_std}") 
+# logger.info(f"IS Score: mean {is_mean} std {is_std}")
 
 precision, recall = calc_pr.compute()
 logger.info(f"Precision: {precision}, Recall {recall} ")
-

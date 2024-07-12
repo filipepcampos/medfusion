@@ -1,6 +1,4 @@
-
-
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -10,14 +8,11 @@ import torch.utils.checkpoint
 from .embeddings import TimeEmbbeding
 
 from .unet_blocks import (
-    CrossAttnDownBlock2D,
-    CrossAttnUpBlock2D,
-    DownBlock2D,
     UNetMidBlock2DCrossAttn,
-    UpBlock2D,
     get_down_block,
     get_up_block,
 )
+
 
 class TimestepEmbedding(nn.Module):
     def __init__(self, channel, time_embed_dim, act_fn="silu"):
@@ -71,7 +66,6 @@ class UNet2DConditionModel(nn.Module):
 
     _supports_gradient_checkpointing = True
 
-
     def __init__(
         self,
         sample_size: Optional[int] = None,
@@ -86,7 +80,12 @@ class UNet2DConditionModel(nn.Module):
             "CrossAttnDownBlock2D",
             "DownBlock2D",
         ),
-        up_block_types: Tuple[str] = ("UpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "CrossAttnUpBlock2D"),
+        up_block_types: Tuple[str] = (
+            "UpBlock2D",
+            "CrossAttnUpBlock2D",
+            "CrossAttnUpBlock2D",
+            "CrossAttnUpBlock2D",
+        ),
         block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
         layers_per_block: int = 2,
         downsample_padding: int = 1,
@@ -105,7 +104,12 @@ class UNet2DConditionModel(nn.Module):
         self.emb = nn.Embedding(2, cross_attention_dim)
 
         # input
-        self.conv_in = nn.Conv2d(in_channels, block_out_channels[0], kernel_size=3, padding=(1, 1))
+        self.conv_in = nn.Conv2d(
+            in_channels,
+            block_out_channels[0],
+            kernel_size=3,
+            padding=(1, 1),
+        )
 
         # time
         self.time_embedding = TimeEmbbeding(block_out_channels[0], time_embed_dim)
@@ -156,7 +160,9 @@ class UNet2DConditionModel(nn.Module):
         for i, up_block_type in enumerate(up_block_types):
             prev_output_channel = output_channel
             output_channel = reversed_block_out_channels[i]
-            input_channel = reversed_block_out_channels[min(i + 1, len(block_out_channels) - 1)]
+            input_channel = reversed_block_out_channels[
+                min(i + 1, len(block_out_channels) - 1)
+            ]
 
             is_final_block = i == len(block_out_channels) - 1
 
@@ -178,18 +184,20 @@ class UNet2DConditionModel(nn.Module):
             prev_output_channel = output_channel
 
         # out
-        self.conv_norm_out = nn.GroupNorm(num_channels=block_out_channels[0], num_groups=norm_num_groups, eps=norm_eps)
+        self.conv_norm_out = nn.GroupNorm(
+            num_channels=block_out_channels[0],
+            num_groups=norm_num_groups,
+            eps=norm_eps,
+        )
         self.conv_act = nn.SiLU()
         self.conv_out = nn.Conv2d(block_out_channels[0], out_channels, 3, padding=1)
-
-
 
     def forward(
         self,
         sample: torch.FloatTensor,
         t: torch.Tensor,
         encoder_hidden_states: torch.Tensor = None,
-        self_cond: torch.Tensor = None
+        self_cond: torch.Tensor = None,
     ):
         encoder_hidden_states = self.emb(encoder_hidden_states)
         # encoder_hidden_states = None # ------------------------ WARNING Disabled ---------------------
@@ -198,7 +206,7 @@ class UNet2DConditionModel(nn.Module):
             sample (`torch.FloatTensor`): (batch, channel, height, width) noisy inputs tensor
             timestep (`torch.FloatTensor` or `float` or `int`): (batch) timesteps
             encoder_hidden_states (`torch.FloatTensor`): (batch, channel, height, width) encoder hidden states
-   
+
         Returns:
             [`~models.unet_2d_condition.UNet2DConditionOutput`] or `tuple`:
             [`~models.unet_2d_condition.UNet2DConditionOutput`] if `return_dict` is True, otherwise a `tuple`. When
@@ -217,7 +225,10 @@ class UNet2DConditionModel(nn.Module):
         # 3. down
         down_block_res_samples = (sample,)
         for downsample_block in self.down_blocks:
-            if hasattr(downsample_block, "attentions") and downsample_block.attentions is not None:
+            if (
+                hasattr(downsample_block, "attentions")
+                and downsample_block.attentions is not None
+            ):
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
                     temb=t_emb,
@@ -229,14 +240,23 @@ class UNet2DConditionModel(nn.Module):
             down_block_res_samples += res_samples
 
         # 4. mid
-        sample = self.mid_block(sample, t_emb, encoder_hidden_states=encoder_hidden_states)
+        sample = self.mid_block(
+            sample,
+            t_emb,
+            encoder_hidden_states=encoder_hidden_states,
+        )
 
         # 5. up
         for upsample_block in self.up_blocks:
             res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
-            down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]
+            down_block_res_samples = down_block_res_samples[
+                : -len(upsample_block.resnets)
+            ]
 
-            if hasattr(upsample_block, "attentions") and upsample_block.attentions is not None:
+            if (
+                hasattr(upsample_block, "attentions")
+                and upsample_block.attentions is not None
+            ):
                 sample = upsample_block(
                     hidden_states=sample,
                     temb=t_emb,
@@ -244,7 +264,11 @@ class UNet2DConditionModel(nn.Module):
                     encoder_hidden_states=encoder_hidden_states,
                 )
             else:
-                sample = upsample_block(hidden_states=sample, temb=t_emb, res_hidden_states_tuple=res_samples)
+                sample = upsample_block(
+                    hidden_states=sample,
+                    temb=t_emb,
+                    res_hidden_states_tuple=res_samples,
+                )
 
         # 6. post-process
         # make sure hidden states is in float32
@@ -252,6 +276,5 @@ class UNet2DConditionModel(nn.Module):
         sample = self.conv_norm_out(sample.float()).type(sample.dtype)
         sample = self.conv_act(sample)
         sample = self.conv_out(sample)
-
 
         return sample, []

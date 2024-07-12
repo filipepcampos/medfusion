@@ -1,7 +1,5 @@
 import math
-from pydoc import describe
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -25,7 +23,10 @@ def get_timestep_embedding(
 
     half_dim = embedding_dim // 2
     exponent = -math.log(max_period) * torch.arange(
-        start=0, end=half_dim, dtype=torch.float32, device=timesteps.device
+        start=0,
+        end=half_dim,
+        dtype=torch.float32,
+        device=timesteps.device,
     )
     exponent = exponent / (half_dim - downscale_freq_shift)
 
@@ -47,8 +48,14 @@ def get_timestep_embedding(
         emb = torch.nn.functional.pad(emb, (0, 1, 0, 0))
     return emb
 
+
 class Timesteps(nn.Module):
-    def __init__(self, num_channels: int, flip_sin_to_cos: bool, downscale_freq_shift: float):
+    def __init__(
+        self,
+        num_channels: int,
+        flip_sin_to_cos: bool,
+        downscale_freq_shift: float,
+    ):
         super().__init__()
         self.num_channels = num_channels
         self.flip_sin_to_cos = flip_sin_to_cos
@@ -62,6 +69,7 @@ class Timesteps(nn.Module):
             downscale_freq_shift=self.downscale_freq_shift,
         )
         return t_emb
+
 
 class TimeEmbbeding(nn.Module):
     def __init__(self, channel: int, time_embed_dim: int, act_fn: str = "silu"):
@@ -84,6 +92,3 @@ class TimeEmbbeding(nn.Module):
 
         sample = self.linear_2(sample)
         return sample
-
-
-

@@ -1,9 +1,10 @@
 import copy
-import torch 
-import torch.nn as nn 
+import torch
+import torch.nn as nn
+
 
 class EMAModel(nn.Module):
-    # See: https://github.com/huggingface/diffusers/blob/3100bc967084964480628ae61210b7eaa7436f1d/src/diffusers/training_utils.py#L42  
+    # See: https://github.com/huggingface/diffusers/blob/3100bc967084964480628ae61210b7eaa7436f1d/src/diffusers/training_utils.py#L42
     """
     Exponential Moving Average of models weights
     """
@@ -39,7 +40,7 @@ class EMAModel(nn.Module):
         self.min_value = min_value
         self.max_value = max_value
 
-        self.averaged_model = self.averaged_model #.to(device=model.device)
+        self.averaged_model = self.averaged_model  # .to(device=model.device)
 
         self.decay = 0.0
         self.optimization_step = 0
@@ -69,7 +70,9 @@ class EMAModel(nn.Module):
             try:
                 ema_param = ema_params[key]
             except KeyError:
-                ema_param = param.float().clone() if param.ndim == 1 else copy.deepcopy(param)
+                ema_param = (
+                    param.float().clone() if param.ndim == 1 else copy.deepcopy(param)
+                )
                 ema_params[key] = ema_param
 
             if not param.requires_grad:
@@ -77,7 +80,10 @@ class EMAModel(nn.Module):
                 ema_param = ema_params[key]
             else:
                 ema_param.mul_(self.decay)
-                ema_param.add_(param.data.to(dtype=ema_param.dtype), alpha=1 - self.decay)
+                ema_param.add_(
+                    param.data.to(dtype=ema_param.dtype),
+                    alpha=1 - self.decay,
+                )
 
             ema_state_dict[key] = ema_param
 
