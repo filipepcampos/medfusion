@@ -21,7 +21,7 @@ def normalize(img):
 
 
 if __name__ == "__main__":
-    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples_7'
+    path_out = Path.cwd()/'results/MIMIC-CXR-JPG/samples_11'
     path_out.mkdir(parents=True, exist_ok=True)
 
     torch.manual_seed(0)
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # ------------ Load Model ------------
     # pipeline = DiffusionPipeline.load_best_checkpoint(path_run_dir)
     #pipeline = DiffusionPipeline.load_from_checkpoint('runs/2024_02_13_090955/last.ckpt')
-    pipeline = DiffusionPipeline.load_from_checkpoint('last_identity_diffusion2.ckpt')
+    pipeline = DiffusionPipeline.load_from_checkpoint('last_identity.ckpt')
     pipeline.to(device)
 
     ds = MIMIC_CXR_Dataset(
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     dm = SimpleDataModule(
         ds_train = ds,
-        batch_size=16, 
+        batch_size=8, 
         # num_workers=0,
         pin_memory=True,
         # weights=ds.get_weights()
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     steps = 250
     use_ddim = True 
     images = {}
-    n_samples = 16
+    n_samples = 8
 
     retrieval_model = get_retrieval_model("/nas-ctm01/homes/fpcampos/dev/reidentification/anonymize/models/retrieval_model.pth") # TODO: Remove hard-coded path
     retrieval_model.to(device)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     k = next(iter(dm.train_dataloader()))
     x, y = k["source"].to(device), k["target"]
 
-    guidance_scales = [-4, -2, -1, 0, 1, 2, 4]
+    guidance_scales = [-8, -2,  0, 2, 8]
 
     # Save original images
     utils.save_image(x, path_out/f'original.png', nrow=1, normalize=True, scale_each=True) # For 2D images: [B, C, H, W]
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         condition = y.to(device)
         un_cond = None 
 
-        x_identity = retrieval_model(x).cuda()
+        x_identity = k["target2"].to(device)
 
         # ----------- Run --------
         results = pipeline.sample(n_samples, (8, 32, 32), guidance_scale=8, condition=condition, un_cond=un_cond, steps=steps, use_ddim=use_ddim, identity_embedding=x_identity, identity_guidance_scale=w)

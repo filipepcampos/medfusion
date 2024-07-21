@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     time_embedder = TimeEmbbeding
     time_embedder_kwargs ={
-        'emb_dim': 1024 + 128 # stable diffusion uses 4*model_channels (model_channels is about 256)
+        'emb_dim': 1024 * 2 # stable diffusion uses 4*model_channels (model_channels is about 256)
         # 'emb_dim': label_embedding size + identity_embedding size
     }
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         monitor=to_monitor,
         every_n_train_steps=save_and_sample_every,
         save_last=True,
-        save_top_k=2,
+        save_top_k=1,
         mode=min_max,
     )
     trainer = Trainer(

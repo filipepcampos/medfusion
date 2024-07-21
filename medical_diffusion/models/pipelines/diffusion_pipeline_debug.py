@@ -89,7 +89,8 @@ class DiffusionPipeline(BasicModel):
         x_0 = batch['source']
         condition = batch.get('target', None)
 
-        identity_embeddings = self.retrieval_model(x_0)
+        #identity_embeddings = self.retrieval_model(x_0)
+        identity_embeddings = batch.get('target2', None)
 
         # Embed into latent space or normalize 
         if self.latent_embedder is not None:
@@ -132,6 +133,8 @@ class DiffusionPipeline(BasicModel):
         # Classifier free guidance 
         if torch.rand(1)<self.classifier_free_guidance_dropout:
             condition = None 
+        if torch.rand(1)<self.classifier_free_guidance_dropout:
+            identity_embeddings = None
        
         # Run Denoise 
         pred, pred_vertical = noise_estimator(x_t, t, condition, self_cond, identity_condition=identity_embeddings) 
@@ -260,7 +263,9 @@ class DiffusionPipeline(BasicModel):
             pred_uncond, _ = noise_estimator(x_t, t, condition=un_cond, self_cond=self_cond)
             pred_cond, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond)
             pred_identity, _ = noise_estimator(x_t, t, condition=None, self_cond=self_cond, identity_condition=identity_embedding)
-            pred = pred_uncond + guidance_scale * (pred_cond - pred_uncond) + identity_guidance_scale * (pred_identity - pred_uncond)
+            pred_both_cond, _ = noise_estimator(x_t, t, condition=condition, self_cond=self_cond, identity_condition=identity_embedding)
+
+            pred = pred_both_cond + guidance_scale * (pred_cond - pred_uncond) + identity_guidance_scale * (pred_identity - pred_uncond)
 
             if self.estimate_variance:
                 pred_uncond, pred_var_uncond =  pred_uncond.chunk(2, dim = 1)  
@@ -324,7 +329,8 @@ class DiffusionPipeline(BasicModel):
                 alpha_next = self.noise_scheduler.alphas_cumprod[t_next]
                 sigma = kwargs.get('eta', 1) * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
                 c = (1 - alpha_next - sigma ** 2).sqrt()
-                noise = torch.randn_like(x_t)
+                noise = torch.randn_like(x_t[0])
+                noise = torch.stack([noise for _ in range(len(x_t))])
                 x_t = x_0 * alpha_next.sqrt() + c * x_T + sigma * noise
 
         # ------ Eventually decode from latent space into image space--------

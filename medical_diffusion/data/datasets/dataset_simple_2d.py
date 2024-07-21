@@ -216,6 +216,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
         labels = labels[labels["split"] == split]
 
         labels['Cardiomegaly'] = labels['Cardiomegaly'].map(lambda x: 2 if x < 0 or math.isnan(x) else x)
+        labels['Pleural Effusion'] = labels['Pleural Effusion'].map(lambda x: 2 if x < 0 or math.isnan(x) else x)
         labels = labels.set_index("dicom_id")
         
         def get_path(row):
@@ -227,6 +228,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
 
         labels['Path'] = labels.apply(get_path, axis=1)
         labels = labels[labels['Cardiomegaly']!=2]
+        labels = labels[labels['Pleural Effusion']!=2]
 
         self.labels = labels
     
@@ -238,7 +240,7 @@ class MIMIC_CXR_Dataset(SimpleDataset2D):
         row = self.labels.loc[dicom_id]
 
         img = self.load_item(row['Path'])
-        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly']), 'path': str(row['Path'])}
+        return {'uid': dicom_id, 'source': self.transform(img), 'target': int(row['Cardiomegaly']), 'target2': int(row['Pleural Effusion']), 'path': str(row['Path'])}
     
     @classmethod
     def run_item_crawler(cls, path_root, extension, **kwargs):
